@@ -1,4 +1,4 @@
-# Burp Suite MCP Server Extension test
+# Burp Suite MCP Server Extension
 
 ## Overview
 

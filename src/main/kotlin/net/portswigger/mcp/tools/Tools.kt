@@ -311,6 +311,24 @@ fun Server.registerTools(api: MontoyaApi, config: McpConfig) {
 
         "Editor text has been set"
     }
+
+    mcpTool<CreateBambda>(
+        "Creates a Burp Bambda from a natural-language prompt for a user-specified location such as proxy, logger, target, or repeater custom action."
+        ) {
+        val parsedLocation = parseBambdaLocation(location)
+        val source = generateBambdaSource(location, name, description, prompt)
+
+        buildString {
+            appendLine("Bambda created successfully.")
+            appendLine("Name: $name")
+            appendLine("Description: $description")
+            appendLine("Location: $parsedLocation")
+            appendLine("Apply/load from: ${usageHintFor(parsedLocation)}")
+            appendLine()
+            appendLine("Source:")
+            appendLine(source)
+        }
+    }
 }
 
 fun getActiveEditor(api: MontoyaApi): JTextArea? {
@@ -426,4 +444,13 @@ data class GenerateCollaboratorPayload(
 @Serializable
 data class GetCollaboratorInteractions(
     val payloadId: String? = null
+)
+
+@Serializable
+data class CreateBambda(
+    val location: String,
+    val name: String,
+    val description: String,
+    val prompt: String,
+    val overwrite: Boolean = false
 )
