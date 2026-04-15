@@ -19,8 +19,10 @@ import net.portswigger.mcp.security.HistoryAccessSecurity
 import net.portswigger.mcp.security.HistoryAccessType
 import net.portswigger.mcp.security.HttpRequestSecurity
 import java.awt.KeyboardFocusManager
+import java.util.UUID
 import java.util.regex.Pattern
 import javax.swing.JTextArea
+
 
 private suspend fun checkHistoryPermissionOrDeny(
     accessType: HistoryAccessType, config: McpConfig, api: MontoyaApi, logMessage: String
@@ -313,22 +315,97 @@ fun Server.registerTools(api: MontoyaApi, config: McpConfig) {
     }
 
     mcpTool<CreateBambda>(
-        "Creates a Burp Bambda from a natural-language prompt for a user-specified location such as proxy, logger, target, or repeater custom action."
-        ) {
-        val parsedLocation = parseBambdaLocation(location)
-        val source = generateBambdaSource(location, name, description, prompt)
+    "Creates and saves a Bambda script directly into the Burp Bambda library. " +
+    "Describe what the filter/action should do in plain English via the 'prompt' field, " +
+    "OR supply raw Java Bambda code directly via the 'scriptCode' field. " +
+    "If both are provided, 'scriptCode' takes priority over 'prompt'. " +
+    "Supported locations: 'proxy http', 'proxy websocket', 'logger', 'logger capture', " +
+    "'target', 'repeater custom action', 'custom column', 'match and replace'. " +
+    "Once saved, apply from the Bambda library inside the relevant Burp tool. " +
+    "Set overwrite=true to replace an existing Bambda with the same name."
+) {
+    // 1. Parse and validate location
+    val parsedLocation = try {
+        parseBambdaLocation(location)
+    } catch (e: IllegalArgumentException) {
+        return@mcpTool "Invalid location: ${e.message}"
+    }
 
+    // 2. Resolve source: scriptCode wins over prompt-generated code
+    val source = if (!scriptCode.isNullOrBlank()) {
+        scriptCode
+    } else {
+        generateBambdaSource(location, name, description, prompt)
+    }
+
+    // 3. Deterministic UUID for overwrite, random for new entries
+    val bambdaId = if (overwrite) {
+        UUID.nameUUIDFromBytes(name.toByteArray(Charsets.UTF_8)).toString()
+    } else {
+        UUID.randomUUID().toString()
+    }
+
+    // 4. Resolve Burp JSON field values for this location
+    val meta = bambdaJsonMeta(parsedLocation)
+
+    // 5. JSON escaping helper
+    fun String.esc(): String = this
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+
+    // 6. Build JSON payload using CORRECT Burp field names:
+    //    "function" (not "functionType"), "source" (not "script")
+    val bambdaJson =
+        """{"id":"$bambdaId","name":"${name.esc()}","description":"${description.esc()}","function":"${meta.functionType}","location":"${meta.location}","source":"${source.esc()}"}"""
+
+    // 7. Import into Burp Bambda library via Montoya API
+    val sourceOrigin = if (!scriptCode.isNullOrBlank()) "Provided via scriptCode" else "Generated from prompt"
+
+    return@mcpTool try {
+        val result = api.bambda().importBambda(bambdaJson)
+        val resultStr = result.toString()
+        val succeeded = resultStr.contains("SUCCESS", ignoreCase = true)
+
+        if (succeeded) {
+            api.logging().logToOutput("MCP CreateBambda: saved '$name' (ID: $bambdaId)")
+            buildString {
+                appendLine("Bambda '$name' saved to the Bambda library successfully.")
+                appendLine("ID: $bambdaId")
+                appendLine("  → Reuse this ID with overwrite=true to update the same entry later.")
+                appendLine("Source: $sourceOrigin")
+                appendLine("Apply from: ${usageHintFor(parsedLocation)}")
+                appendLine()
+                appendLine("Script:")
+                appendLine("─".repeat(60))
+                append(source)
+            }
+        } else {
+            api.logging().logToOutput("MCP CreateBambda failed for '$name': $resultStr")
+            buildString {
+                appendLine("Bambda '$name' failed to save.")
+                appendLine("Source: $sourceOrigin")
+                appendLine("Result: $resultStr")
+                appendLine()
+                appendLine("Script (check for syntax issues):")
+                appendLine("─".repeat(60))
+                append(source)
+            }
+        }
+    } catch (e: Exception) {
+        api.logging().logToOutput("MCP CreateBambda exception for '$name': ${e.message}")
         buildString {
-            appendLine("Bambda created successfully.")
-            appendLine("Name: $name")
-            appendLine("Description: $description")
-            appendLine("Location: $parsedLocation")
-            appendLine("Apply/load from: ${usageHintFor(parsedLocation)}")
+            appendLine("Exception while saving Bambda '$name': ${e.message}")
+            appendLine("Source: $sourceOrigin")
             appendLine()
-            appendLine("Source:")
-            appendLine(source)
+            appendLine("Script that was attempted:")
+            appendLine("─".repeat(60))
+            append(source)
         }
     }
+}   
 }
 
 fun getActiveEditor(api: MontoyaApi): JTextArea? {
@@ -452,5 +529,6 @@ data class CreateBambda(
     val name: String,
     val description: String,
     val prompt: String,
+    val scriptCode: String? = null,
     val overwrite: Boolean = false
 )
