@@ -7,7 +7,7 @@
 
 ## 🤔 What Is This?
 
-The official PortSwigger MCP Server lets AI assistants (like Claude) talk to Burp Suite. This **Extended Edition** goes further — it lets your AI agent **write and deploy Bambda scripts directly into Burp's Bambda library** in real time. These Bambdas can target multiple locations across Burp: Proxy HTTP history filters, Repeater custom actions, Logger filters, Site map filters, Match & Replace rules, Custom columns and more. On top of that, the agent can generate **Custom Scan Checks** — Java-based active scan Bambdas that plug straight into Burp's scanner engine, raise findings with configurable severity and confidence levels, and appear directly in your scan results.
+The official PortSwigger MCP Server lets AI assistants talk to Burp Suite. This **Extended Edition** goes further — your AI agent can now **write and deploy Bambda scripts directly into Burp's Bambda library**, targeting Proxy, Repeater, Logger, Site map, Match & Replace, WebSocket history, and Custom columns. It can also generate **Custom Scan Checks** that plug into Burp's scanner engine and surface findings with configurable severity — all in real time, without touching a line of Java manually.
 
 Instead of manually writing Java code and copy-pasting it into Burp, you just describe what you want:
 
