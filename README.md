@@ -7,7 +7,7 @@
 
 ## 🤔 What Is This?
 
-The official PortSwigger MCP Server lets AI assistants (like Claude) talk to Burp Suite. This **Extended Edition** goes further — it lets your AI agent **write and deploy Bambda scripts directly into Burp's Bambda library** in real time, across Proxy, Repeater, Scanner, Logger, and more.
+The official PortSwigger MCP Server lets AI assistants (like Claude) talk to Burp Suite. This **Extended Edition** goes further — it lets your AI agent **write and deploy Bambda scripts directly into Burp's Bambda library** in real time, across Proxy HTTP history, WebSocket history, Repeater custom actions, and more... along with **active scan checks** that plug straight into Burp's scanner engine and raise findings with configurable severity and confidence levels.
 
 Instead of manually writing Java code and copy-pasting it into Burp, you just describe what you want:
 
@@ -172,7 +172,7 @@ logging the status code for each version.
 **GraphQL introspection check:**
 ```
 Create a bambda in repeater custom action location named "GraphQL Introspection"
-that tests whether GraphQL introspection is enabled on the current request.
+that tests the Introspection paylaod and logs whether GraphQL introspection is enabled on the current request.
 ```
 
 
